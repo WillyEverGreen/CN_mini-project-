@@ -1,0 +1,5 @@
+# Local run scripts not needed on public Vercel static hosting
+run.bat
+server.py
+.git
+.gitignore

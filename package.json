@@ -1,0 +1,20 @@
+{
+  "name": "packetguard-firewall-simulator",
+  "version": "1.0.0",
+  "description": "PacketGuard: Network Firewall Simulation & Packet Filtering Engine (L3/L4 Stateful Inspection)",
+  "main": "index.html",
+  "scripts": {
+    "test": "node test_suite.js",
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "firewall-simulator",
+    "computer-networks",
+    "packet-filtering",
+    "stateful-inspection",
+    "osi-model",
+    "network-topology"
+  ],
+  "author": "",
+  "license": "MIT"
+}

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PacketGuard - Network Firewall Simulator</title>
+  <title>PacketGuard - Multi-Client Network Firewall Simulator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -21,7 +21,7 @@
         <div class="step-badge">1</div>
         <div class="panel-title-group">
           <h2>Request Crafter</h2>
-          <p>Create and send network requests</p>
+          <p>Multi-client requests & live site inspection</p>
         </div>
       </div>
 
@@ -33,6 +33,7 @@
 
       <!-- Presets List -->
       <div class="presets-list" id="presetsContainer">
+        <!-- Preset 1: Web HTTP -->
         <button class="preset-card active" data-preset="http">
           <div class="preset-icon globe-icon">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -43,10 +44,53 @@
           </div>
           <div class="preset-info">
             <span class="preset-name">Web HTTP</span>
-            <span class="preset-sub">HTTP GET (Port 80)</span>
+            <span class="preset-sub">Client A &rarr; Web :80 (Allowed)</span>
           </div>
         </button>
 
+        <!-- Preset 2: Live Site Block (Google) -->
+        <button class="preset-card" data-preset="live-google">
+          <div class="preset-icon block-site-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#EF4444" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+            </svg>
+          </div>
+          <div class="preset-info">
+            <span class="preset-name" style="color: #DC2626;">Block Site (Google)</span>
+            <span class="preset-sub">google.com Intercept (403 Block)</span>
+          </div>
+        </button>
+
+        <!-- Preset 3: Live Site Allowed (Example) -->
+        <button class="preset-card" data-preset="live-example">
+          <div class="preset-icon allow-site-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10B981" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <div class="preset-info">
+            <span class="preset-name" style="color: #059669;">Allow Site (Live)</span>
+            <span class="preset-sub">example.com Fetch (200 OK)</span>
+          </div>
+        </button>
+
+        <!-- Preset 4: Rogue DB Attack -->
+        <button class="preset-card" data-preset="rogue-db">
+          <div class="preset-icon alert-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#F59E0B" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+          <div class="preset-info">
+            <span class="preset-name">Rogue DB Probe</span>
+            <span class="preset-sub">Client C &rarr; DB :3306 (Blocked)</span>
+          </div>
+        </button>
+
+        <!-- Preset 5: SSH Bastion -->
         <button class="preset-card" data-preset="ssh">
           <div class="preset-icon term-icon">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -55,11 +99,12 @@
             </svg>
           </div>
           <div class="preset-info">
-            <span class="preset-name">SSH</span>
-            <span class="preset-sub">SSH Connection (Port 22)</span>
+            <span class="preset-name">SSH Bastion</span>
+            <span class="preset-sub">Port 22 SSH Inspection</span>
           </div>
         </button>
 
+        <!-- Preset 6: DNS Query -->
         <button class="preset-card" data-preset="dns">
           <div class="preset-icon db-icon">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -70,24 +115,11 @@
           </div>
           <div class="preset-info">
             <span class="preset-name">DNS Query</span>
-            <span class="preset-sub">DNS Lookup (Port 53)</span>
+            <span class="preset-sub">UDP 53 &rarr; 8.8.8.8</span>
           </div>
         </button>
 
-        <button class="preset-card" data-preset="db">
-          <div class="preset-icon sql-icon">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <ellipse cx="12" cy="5" rx="9" ry="3"/>
-              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-            </svg>
-          </div>
-          <div class="preset-info">
-            <span class="preset-name">Database Query</span>
-            <span class="preset-sub">MySQL Query (Port 3306)</span>
-          </div>
-        </button>
-
+        <!-- Preset 7: Port Scan -->
         <button class="preset-card" data-preset="portscan">
           <div class="preset-icon scan-icon">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -98,10 +130,11 @@
           </div>
           <div class="preset-info">
             <span class="preset-name">Port Scan</span>
-            <span class="preset-sub">Scan Multiple Ports</span>
+            <span class="preset-sub">Nmap Sweep (6 Ports)</span>
           </div>
         </button>
 
+        <!-- Preset 8: Custom Request -->
         <button class="preset-card" data-preset="custom">
           <div class="preset-icon code-icon">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -110,14 +143,38 @@
             </svg>
           </div>
           <div class="preset-info">
-            <span class="preset-name">Custom Request</span>
-            <span class="preset-sub">Send custom packet</span>
+            <span class="preset-name">Custom Packet</span>
+            <span class="preset-sub">Craft custom 5-tuple</span>
           </div>
         </button>
       </div>
 
       <!-- Request Details Form -->
       <form class="request-form" id="requestForm" onsubmit="return false;">
+        <!-- Multi-Client Origin Selector -->
+        <div class="form-group" id="clientGroup">
+          <label for="reqClient">Source Client Node</label>
+          <select id="reqClient" class="form-select">
+            <option value="192.168.1.50" data-name="Client A (Admin)" selected>💻 Client A - Admin (192.168.1.50)</option>
+            <option value="192.168.1.51" data-name="Client B (Dev)">💻 Client B - Developer (192.168.1.51)</option>
+            <option value="192.168.1.99" data-name="Client C (Rogue)">⚠️ Client C - Rogue Host (192.168.1.99)</option>
+          </select>
+        </div>
+
+        <!-- Destination Target Selector -->
+        <div class="form-group" id="destSelectGroup">
+          <label for="reqDestSelect">Destination Target</label>
+          <select id="reqDestSelect" class="form-select">
+            <option value="10.0.0.10" data-port="80" data-proto="TCP" selected>🖥️ Web Server (10.0.0.10:80)</option>
+            <option value="10.0.0.20" data-port="3306" data-proto="TCP">🗄️ Database Server (10.0.0.20:3306)</option>
+            <option value="10.0.0.30" data-port="22" data-proto="TCP">🔒 SSH Bastion (10.0.0.30:22)</option>
+            <option value="google.com" data-port="443" data-proto="TCP">🚫 google.com (Blocked Site Demo)</option>
+            <option value="example.com" data-port="80" data-proto="TCP">🌐 example.com (Allowed Live Site)</option>
+            <option value="8.8.8.8" data-port="53" data-proto="UDP">☁️ Internet Cloud DNS (8.8.8.8:53)</option>
+            <option value="custom">✏️ Custom Host / IP...</option>
+          </select>
+        </div>
+
         <div class="form-row-compact">
           <div class="form-group flex-1" id="methodGroup">
             <label for="reqMethod">Method</label>
@@ -137,8 +194,8 @@
         </div>
 
         <div class="form-group">
-          <label for="reqDest">Destination Host</label>
-          <input type="text" id="reqDest" value="10.0.0.10" placeholder="10.0.0.10">
+          <label for="reqDest">Destination Host / Domain</label>
+          <input type="text" id="reqDest" value="10.0.0.10" placeholder="10.0.0.10 or google.com">
         </div>
 
         <div class="form-group" id="pathGroup">
@@ -148,7 +205,7 @@
 
         <div class="form-group" id="headersGroup">
           <label for="reqHeaders">Headers (optional)</label>
-          <textarea id="reqHeaders" rows="1">User-Agent: PacketGuard/1.0</textarea>
+          <textarea id="reqHeaders" rows="1">User-Agent: PacketGuard/2.0</textarea>
         </div>
 
         <button type="button" class="btn-primary send-btn" id="sendRequestBtn">
@@ -156,6 +213,17 @@
             <polygon points="5 3 19 12 5 21 5 3"/>
           </svg>
           <span>Send Request</span>
+        </button>
+
+        <button type="button" class="btn-secondary inspect-browser-btn" id="openBrowserPreviewBtn">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="18" rx="3" ry="3"/>
+            <line x1="2" y1="9" x2="22" y2="9"/>
+            <circle cx="6" cy="6" r="1.5"/>
+            <circle cx="10" cy="6" r="1.5"/>
+            <circle cx="14" cy="6" r="1.5"/>
+          </svg>
+          <span>Inspect Client Browser View</span>
         </button>
       </form>
 
@@ -193,13 +261,32 @@
           <div class="header-left">
             <div class="step-badge">2</div>
             <div class="panel-title-group">
-              <h2>Network Topology</h2>
-              <p>Watch packets flow through router, firewall and switch in real-time</p>
+              <h2>Enterprise Multi-Node Topology</h2>
+              <p>Real-time packet deflection between 3 clients, switch, firewall, and 3 server tiers</p>
             </div>
           </div>
 
           <!-- Controls integrated into Topology Header -->
           <div class="header-right-controls">
+            <!-- Documentation Links -->
+            <a href="report.html" target="_blank" class="nav-btn doc-nav-btn" title="View Full Academic CN Project Report">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              <span>Report</span>
+            </a>
+            <a href="presentation.html" target="_blank" class="nav-btn doc-nav-btn" title="Launch Interactive Presentation Deck">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+              <span>Slides (PPT)</span>
+            </a>
+
             <div class="topology-legend">
               <span class="legend-item"><span class="legend-dot dot-allowed"></span> Allowed</span>
               <span class="legend-item"><span class="legend-dot dot-blocked"></span> Blocked</span>
@@ -240,11 +327,26 @@
 
           <!-- Dynamic SVG Cable Layer -->
           <svg class="topology-cables" id="topologyCables">
+            <!-- Multi-Client Cables -->
+            <path id="cableClientA_Switch" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
+            <path id="cableClientB_Switch" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
+            <path id="cableClientC_Switch" stroke="#F87171" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
+            <!-- Legacy fallback cable -->
             <path id="cableClientSwitch" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
+
+            <!-- Multi-Server Cables -->
+            <path id="cableSwitch_ServerWeb" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
+            <path id="cableSwitch_ServerDb" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
+            <path id="cableSwitch_ServerBastion" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
+            <!-- Legacy fallback cable -->
             <path id="cableSwitchServer" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
+
+            <!-- Core Backbones -->
             <path id="cableSwitchFirewall" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
             <path id="cableFirewallRouter" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
             <path id="cableRouterInternet" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="5,4" fill="none"/>
+
+            <!-- Blocked Deflection Arc -->
             <path id="cableBlockedArc" stroke="#F87171" stroke-width="2.5" stroke-dasharray="4,4" fill="none"/>
           </svg>
 
@@ -258,8 +360,8 @@
               </svg>
             </div>
             <div class="node-meta">
-              <span class="node-name">Internet</span>
-              <span class="node-ip">8.8.8.8</span>
+              <span class="node-name">Internet Cloud</span>
+              <span class="node-ip">8.8.8.8 / Live Web</span>
             </div>
           </div>
 
@@ -275,7 +377,7 @@
               <div class="router-antenna right"></div>
             </div>
             <div class="node-meta">
-              <span class="node-name">Router</span>
+              <span class="node-name">Gateway Router</span>
               <span class="node-ip">203.0.113.1</span>
             </div>
           </div>
@@ -291,7 +393,7 @@
               </div>
             </div>
             <div class="node-meta">
-              <span class="node-name">Firewall</span>
+              <span class="node-name">Firewall (Stateful)</span>
               <span class="node-ip">192.168.1.1</span>
             </div>
           </div>
@@ -306,7 +408,7 @@
               </svg>
             </div>
             <div class="deflection-text">
-              <span class="deflect-status">BLOCKED</span>
+              <span class="deflect-status">PACKET DROPPED &amp; DEFLECTED</span>
               <span class="deflect-reason" id="deflectReasonText">Port 22 (SSH) Rule #2</span>
             </div>
           </div>
@@ -324,41 +426,103 @@
               </div>
             </div>
             <div class="node-meta">
-              <span class="node-name">Switch</span>
+              <span class="node-name">Core Switch</span>
               <span class="node-ip">192.168.1.2</span>
             </div>
           </div>
 
-          <!-- Node: Client (Bottom Left) -->
-          <div class="topo-node node-client" id="nodeClient">
+          <!-- MULTI-CLIENT NODES (Left Section) -->
+          <!-- Client A: Admin Workstation -->
+          <div class="topo-node node-client node-client-a selected-node" id="nodeClientA" data-client="192.168.1.50" title="Client A (Admin) - 192.168.1.50">
             <div class="device-laptop">
-              <div class="laptop-screen">
-                <div class="laptop-display">
-                  <span class="screen-prompt">&gt; pg_</span>
-                </div>
-              </div>
+              <div class="laptop-screen"><div class="laptop-display"><span class="screen-prompt">&gt; admin_</span></div></div>
               <div class="laptop-base"></div>
+              <span class="client-badge badge-admin">Admin</span>
               <span class="node-status-dot active"></span>
             </div>
             <div class="node-meta">
-              <span class="node-name">Client</span>
+              <span class="node-name">Client A</span>
               <span class="node-ip">192.168.1.50</span>
             </div>
           </div>
 
-          <!-- Node: Server (Bottom Right) -->
-          <div class="topo-node node-server" id="nodeServer">
+          <!-- Client B: Developer Laptop -->
+          <div class="topo-node node-client node-client-b" id="nodeClientB" data-client="192.168.1.51" title="Client B (Dev) - 192.168.1.51">
+            <div class="device-laptop">
+              <div class="laptop-screen"><div class="laptop-display"><span class="screen-prompt">&gt; dev_</span></div></div>
+              <div class="laptop-base"></div>
+              <span class="client-badge badge-dev">Dev</span>
+              <span class="node-status-dot active"></span>
+            </div>
+            <div class="node-meta">
+              <span class="node-name">Client B</span>
+              <span class="node-ip">192.168.1.51</span>
+            </div>
+          </div>
+
+          <!-- Client C: Rogue / Untrusted Host -->
+          <div class="topo-node node-client node-client-c" id="nodeClientC" data-client="192.168.1.99" title="Client C (Rogue) - 192.168.1.99">
+            <div class="device-laptop device-rogue">
+              <div class="laptop-screen screen-rogue"><div class="laptop-display"><span class="screen-prompt">&gt; rogue#</span></div></div>
+              <div class="laptop-base base-rogue"></div>
+              <span class="client-badge badge-rogue">Rogue</span>
+              <span class="node-status-dot warning"></span>
+            </div>
+            <div class="node-meta">
+              <span class="node-name">Client C</span>
+              <span class="node-ip">192.168.1.99</span>
+            </div>
+          </div>
+
+          <!-- MULTI-SERVER NODES (Right Section) -->
+          <!-- Server 1: Internal Web Server -->
+          <div class="topo-node node-server node-server-web selected-node" id="nodeServerWeb" data-server="10.0.0.10" title="Web Server - 10.0.0.10:80/443">
             <div class="device-server">
               <div class="server-rack">
                 <div class="rack-unit"><span class="rack-led green"></span><span class="rack-drive"></span></div>
                 <div class="rack-unit"><span class="rack-led blue"></span><span class="rack-drive"></span></div>
                 <div class="rack-unit"><span class="rack-led green"></span><span class="rack-drive"></span></div>
               </div>
+              <span class="server-badge badge-web">Web :80</span>
               <span class="node-status-dot active"></span>
             </div>
             <div class="node-meta">
-              <span class="node-name">Server</span>
+              <span class="node-name">Web Server</span>
               <span class="node-ip">10.0.0.10</span>
+            </div>
+          </div>
+
+          <!-- Server 2: Database Server -->
+          <div class="topo-node node-server node-server-db" id="nodeServerDb" data-server="10.0.0.20" title="Database Server - 10.0.0.20:3306">
+            <div class="device-server">
+              <div class="server-rack rack-db">
+                <div class="rack-unit"><span class="rack-led amber"></span><span class="rack-drive"></span></div>
+                <div class="rack-unit"><span class="rack-led amber"></span><span class="rack-drive"></span></div>
+                <div class="rack-unit"><span class="rack-led amber"></span><span class="rack-drive"></span></div>
+              </div>
+              <span class="server-badge badge-db">MySQL:3306</span>
+              <span class="node-status-dot active"></span>
+            </div>
+            <div class="node-meta">
+              <span class="node-name">DB Server</span>
+              <span class="node-ip">10.0.0.20</span>
+            </div>
+          </div>
+
+          <!-- Server 3: Bastion Host -->
+          <div class="topo-node node-server node-server-bastion" id="nodeServerBastion" data-server="10.0.0.30" title="SSH Bastion Host - 10.0.0.30:22">
+            <div class="device-server">
+              <div class="server-rack rack-bastion">
+                <div class="rack-unit"><span class="rack-led purple"></span><span class="rack-drive"></span></div>
+                <div class="rack-unit"><span class="rack-led purple"></span><span class="rack-drive"></span></div>
+                <div class="rack-unit"><span class="rack-led purple"></span><span class="rack-drive"></span></div>
+              </div>
+              <span class="server-badge badge-bastion">SSH:22</span>
+              <span class="node-status-dot active"></span>
+            </div>
+            <div class="node-meta">
+              <span class="node-name">SSH Bastion</span>
+              <span class="node-ip">10.0.0.30</span>
             </div>
           </div>
 
@@ -378,24 +542,26 @@
             </div>
           </div>
           <div class="timeline-actions">
-            <span class="timeline-counter" id="timelineCounter">8 packets</span>
+            <span class="counter-badge" id="timelineCounter">0 packets logged</span>
           </div>
         </div>
 
-        <div class="table-container">
-          <table class="timeline-table" id="timelineTable">
+        <div class="timeline-table-container">
+          <table class="timeline-table">
             <thead>
               <tr>
-                <th style="width: 35px">#</th>
-                <th style="width: 80px">Time</th>
-                <th>Source &rarr; Destination</th>
-                <th style="width: 75px">Protocol</th>
+                <th style="width: 70px">Time</th>
+                <th style="width: 90px">Source</th>
+                <th style="width: 110px">Destination</th>
+                <th style="width: 60px">Proto</th>
+                <th style="width: 75px">Port</th>
+                <th style="width: 75px">Verdict</th>
+                <th style="width: 140px">Rule Matched</th>
                 <th>Info</th>
-                <th style="width: 90px">Status</th>
               </tr>
             </thead>
             <tbody id="timelineBody">
-              <!-- Dynamically populated rows -->
+              <!-- Dynamically populated packet log rows -->
             </tbody>
           </table>
         </div>
@@ -413,7 +579,7 @@
             <div class="step-badge">4</div>
             <div class="panel-title-group">
               <h2>Firewall Security Rules</h2>
-              <p>Rules evaluated in order (top to bottom)</p>
+              <p>Rules evaluated in strict first-match priority order</p>
             </div>
           </div>
           <button class="btn-primary add-rule-btn" id="addRuleBtn">
@@ -436,7 +602,7 @@
           <div class="header-left">
             <div class="step-badge">5</div>
             <div class="panel-title-group">
-              <h2>Server Activity Console</h2>
+              <h2>Server &amp; Gateway Console</h2>
             </div>
           </div>
           <button class="btn-ghost clear-btn" id="clearConsoleBtn" title="Clear console">
@@ -468,7 +634,7 @@
       <form id="ruleForm" onsubmit="return false;">
         <div class="form-group">
           <label for="ruleName">Rule Description / Name</label>
-          <input type="text" id="ruleName" placeholder="e.g. Block Telnet" required>
+          <input type="text" id="ruleName" placeholder="e.g. Block Google / Deny Rogue Client" required>
         </div>
 
         <div class="form-row">
@@ -491,10 +657,15 @@
           </div>
         </div>
 
+        <div class="form-group">
+          <label for="ruleDomain">Domain / Host Filter (optional, e.g. google.com, *.facebook.com)</label>
+          <input type="text" id="ruleDomain" value="*" placeholder="* or google.com">
+        </div>
+
         <div class="form-row">
           <div class="form-group">
             <label for="ruleSrcIp">Source IP / CIDR (* = any)</label>
-            <input type="text" id="ruleSrcIp" value="*" placeholder="* or 192.168.1.0/24">
+            <input type="text" id="ruleSrcIp" value="*" placeholder="* or 192.168.1.50">
           </div>
 
           <div class="form-group">
@@ -531,6 +702,49 @@
         <button class="modal-close" id="closeInspectorBtn">&times;</button>
       </div>
       <div class="inspector-content" id="inspectorContent"></div>
+    </div>
+  </div>
+
+  <!-- Modal: Live Client Browser Window (Visualizing Actual Site Blocking vs Allowed Response) -->
+  <div class="modal-backdrop hidden" id="browserPreviewModal">
+    <div class="modal-card modal-browser-window">
+      <div class="browser-chrome-bar">
+        <div class="browser-window-dots">
+          <span class="dot-red"></span>
+          <span class="dot-yellow"></span>
+          <span class="dot-green"></span>
+        </div>
+        <div class="browser-tab active-tab">
+          <span class="tab-favicon" id="browserFavicon">🌐</span>
+          <span class="tab-title" id="browserTabTitle">Client Browser - google.com</span>
+          <span class="tab-close">×</span>
+        </div>
+        <button class="modal-close browser-close-btn" id="closeBrowserBtn">&times;</button>
+      </div>
+
+      <div class="browser-address-bar-row">
+        <div class="browser-nav-buttons">
+          <button class="b-nav-btn" disabled>&larr;</button>
+          <button class="b-nav-btn" disabled>&rarr;</button>
+          <button class="b-nav-btn" id="browserRefreshBtn">&#8635;</button>
+        </div>
+        <div class="browser-url-input-box" id="browserUrlBox">
+          <span class="security-badge" id="browserSecBadge">🔒 Secure</span>
+          <input type="text" id="browserUrlDisplay" value="https://google.com" readonly>
+          <span class="latency-pill" id="browserLatencyPill">12ms</span>
+        </div>
+        <div class="browser-status-chip" id="browserStatusChip">200 OK</div>
+      </div>
+
+      <div class="browser-viewport" id="browserViewport">
+        <div class="browser-loading-state hidden" id="browserLoadingState">
+          <div class="spinner"></div>
+          <p>Sending HTTP request from client through firewall...</p>
+        </div>
+        <div class="browser-render-content" id="browserRenderContent">
+          <!-- Rendered live response or realistic 403 Forbidden Firewall block screen -->
+        </div>
+      </div>
     </div>
   </div>
 

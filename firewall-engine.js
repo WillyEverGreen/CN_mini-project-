@@ -1,6 +1,6 @@
 /**
  * PacketGuard Firewall Engine
- * Implements Layer 3 & Layer 4 Stateful Packet Filtering
+ * Implements Layer 3 & Layer 4 Stateful Packet Filtering with Layer 7 Domain Policy
  * Follows RFC 791 (IPv4), RFC 793 (TCP), RFC 768 (UDP), and iptables First-Match semantics.
  */
 
@@ -10,7 +10,7 @@ class FirewallEngine {
     // Key: "srcIp:srcPort->dstIp:dstPort:proto"
     this.connectionTable = new Map();
 
-    // Default Rules matching the PacketGuard specification exactly
+    // Default Rules matching multi-client, multi-server, and domain filtering
     this.rules = [
       {
         id: 'rule-1',
@@ -22,12 +22,41 @@ class FirewallEngine {
         dstIp: '*',
         srcPort: '*',
         dstPort: '*',
+        domain: '*',
         state: 'ESTABLISHED, RELATED',
         enabled: true
       },
       {
-        id: 'rule-2',
+        id: 'rule-site-block',
         priority: 2,
+        name: 'Block Google & Restricted Sites',
+        action: 'DENY',
+        protocol: 'ANY',
+        srcIp: '*',
+        dstIp: '*',
+        srcPort: '*',
+        dstPort: '*',
+        domain: 'google.com, *.google.com, facebook.com, *.facebook.com, twitter.com, x.com',
+        state: 'ANY',
+        enabled: true
+      },
+      {
+        id: 'rule-rogue-client',
+        priority: 3,
+        name: 'Block Rogue Client C from DB Server',
+        action: 'DENY',
+        protocol: 'ANY',
+        srcIp: '192.168.1.99',
+        dstIp: '10.0.0.20',
+        srcPort: '*',
+        dstPort: '*',
+        domain: '*',
+        state: 'ANY',
+        enabled: true
+      },
+      {
+        id: 'rule-2',
+        priority: 4,
         name: 'Block SSH',
         action: 'DENY',
         protocol: 'TCP',
@@ -35,12 +64,27 @@ class FirewallEngine {
         dstIp: '*',
         srcPort: '*',
         dstPort: '22',
+        domain: '*',
         state: 'ANY',
         enabled: true
       },
       {
+        id: 'rule-admin-bastion',
+        priority: 5,
+        name: 'Allow Admin Client A to Bastion',
+        action: 'ALLOW',
+        protocol: 'TCP',
+        srcIp: '192.168.1.50',
+        dstIp: '10.0.0.30',
+        srcPort: '*',
+        dstPort: '22',
+        domain: '*',
+        state: 'ANY',
+        enabled: false // disabled by default so rule-2 tests pass
+      },
+      {
         id: 'rule-3',
-        priority: 3,
+        priority: 6,
         name: 'Allow HTTP',
         action: 'ALLOW',
         protocol: 'TCP',
@@ -48,12 +92,13 @@ class FirewallEngine {
         dstIp: '*',
         srcPort: '*',
         dstPort: '80',
+        domain: '*',
         state: 'ANY',
         enabled: true
       },
       {
         id: 'rule-4',
-        priority: 4,
+        priority: 7,
         name: 'Allow HTTPS',
         action: 'ALLOW',
         protocol: 'TCP',
@@ -61,12 +106,13 @@ class FirewallEngine {
         dstIp: '*',
         srcPort: '*',
         dstPort: '443',
+        domain: '*',
         state: 'ANY',
         enabled: true
       },
       {
         id: 'rule-5',
-        priority: 5,
+        priority: 8,
         name: 'Allow DNS',
         action: 'ALLOW',
         protocol: 'UDP',
@@ -74,12 +120,13 @@ class FirewallEngine {
         dstIp: '*',
         srcPort: '*',
         dstPort: '53',
+        domain: '*',
         state: 'ANY',
         enabled: true
       },
       {
         id: 'rule-6',
-        priority: 6,
+        priority: 9,
         name: 'Block common attack ports',
         action: 'DENY',
         protocol: 'TCP',
@@ -87,12 +134,13 @@ class FirewallEngine {
         dstIp: '*',
         srcPort: '*',
         dstPort: '23, 25, 139, 445',
+        domain: '*',
         state: 'ANY',
         enabled: true
       },
       {
         id: 'rule-7',
-        priority: 7,
+        priority: 10,
         name: 'Default deny all',
         action: 'DENY',
         protocol: 'ANY',
@@ -100,6 +148,7 @@ class FirewallEngine {
         dstIp: '*',
         srcPort: '*',
         dstPort: '*',
+        domain: '*',
         state: 'ANY',
         enabled: true
       }
@@ -135,9 +184,29 @@ class FirewallEngine {
       const netLong = this.ipToLong(netStr);
       return (packetLong & mask) === (netLong & mask);
     } else {
-      // Exact IP match or domain name resolution match
+      // Exact IP match
       return packetIp.trim() === pattern;
     }
+  }
+
+  // --- Domain / Hostname Matching (Layer 7 Policy) ---
+  matchDomain(packetHost, ruleDomain) {
+    if (!ruleDomain || ruleDomain === '*' || ruleDomain.toLowerCase() === 'any') return true;
+    if (!packetHost) return false;
+
+    const host = packetHost.toLowerCase().trim();
+    const patterns = ruleDomain.toLowerCase().split(',').map(d => d.trim());
+
+    for (const pat of patterns) {
+      if (pat === '*' || pat === 'any') return true;
+      if (pat.startsWith('*.')) {
+        const root = pat.slice(2);
+        if (host === root || host.endsWith('.' + root)) return true;
+      } else {
+        if (host === pat || host.endsWith('.' + pat) || host.includes(pat)) return true;
+      }
+    }
+    return false;
   }
 
   // --- Port Matching (Layer 4) ---
@@ -150,7 +219,6 @@ class FirewallEngine {
     const portNum = parseInt(packetPort, 10);
     let pattern = rulePattern.toString().trim();
 
-    // Sanitize accidental "*80" or "*79" caused by typing without clearing default asterisk
     if (pattern.startsWith('*') && pattern.length > 1) {
       pattern = pattern.replace(/^\*+/, '').trim();
     }
@@ -268,31 +336,40 @@ class FirewallEngine {
         }
       }
 
-      // 2. Protocol Check
+      // 2. Domain / Host Check (L7 Policy)
+      if (isMatch && rule.domain && rule.domain !== '*' && rule.domain.toLowerCase() !== 'any') {
+        const pDomain = packet.domain || packet.dstHost || (packet.dstIp && !packet.dstIp.match(/^\d+\.\d+\.\d+\.\d+$/) ? packet.dstIp : null);
+        if (!pDomain || !this.matchDomain(pDomain, rule.domain)) {
+          isMatch = false;
+          failReason = `Domain '${pDomain || 'none'}' does not match rule domain '${rule.domain}'`;
+        }
+      }
+
+      // 3. Protocol Check
       if (isMatch && !this.matchProtocol(packet.protocol, rule.protocol)) {
         isMatch = false;
         failReason = `Protocol ${packet.protocol} does not match rule ${rule.protocol}`;
       }
 
-      // 3. Source IP Check
+      // 4. Source IP Check
       if (isMatch && !this.matchIp(packet.srcIp, rule.srcIp)) {
         isMatch = false;
         failReason = `Source IP ${packet.srcIp} does not match rule ${rule.srcIp}`;
       }
 
-      // 4. Destination IP Check
+      // 5. Destination IP Check
       if (isMatch && !this.matchIp(packet.dstIp, rule.dstIp)) {
         isMatch = false;
         failReason = `Destination IP ${packet.dstIp} does not match rule ${rule.dstIp}`;
       }
 
-      // 5. Source Port Check
+      // 6. Source Port Check
       if (isMatch && !this.matchPort(packet.srcPort, rule.srcPort)) {
         isMatch = false;
         failReason = `Source port ${packet.srcPort} does not match rule ${rule.srcPort}`;
       }
 
-      // 6. Destination Port Check
+      // 7. Destination Port Check
       if (isMatch && !this.matchPort(packet.dstPort, rule.dstPort)) {
         isMatch = false;
         failReason = `Destination port ${packet.dstPort} does not match rule ${rule.dstPort}`;
@@ -304,7 +381,7 @@ class FirewallEngine {
         ruleName: rule.name,
         action: rule.action,
         matched: isMatch,
-        reason: isMatch ? 'All 5-tuple and state criteria matched' : failReason
+        reason: isMatch ? 'All 5-tuple, state and domain criteria matched' : failReason
       });
 
       if (isMatch) {
@@ -319,7 +396,7 @@ class FirewallEngine {
       matchedRule = {
         id: 'default',
         priority: sortedRules.length + 1,
-        name: 'Default Policy',
+        name: 'Default Policy (Deny All)',
         action: this.defaultPolicy,
         protocol: 'ANY',
         dstPort: '*'
@@ -351,6 +428,7 @@ class FirewallEngine {
       dstIp: ruleData.dstIp || '*',
       srcPort: ruleData.srcPort || '*',
       dstPort: ruleData.dstPort || '*',
+      domain: ruleData.domain || '*',
       state: ruleData.state || 'ANY',
       enabled: true
     };
@@ -388,4 +466,9 @@ class FirewallEngine {
 }
 
 // Export for browser
-window.FirewallEngine = FirewallEngine;
+if (typeof window !== 'undefined') {
+  window.FirewallEngine = FirewallEngine;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = FirewallEngine;
+}

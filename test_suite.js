@@ -194,6 +194,77 @@ assert(
   `Got verdict=${sshResAllowed.verdict}, rule=${sshResAllowed.matchedRule?.name}`
 );
 
+// --- Test 18: Live Site Domain Filtering (google.com is Blocked) ---
+const freshEngine = new window.FirewallEngine();
+const googlePkt = {
+  srcIp: '192.168.1.50',
+  dstIp: '142.250.190.46',
+  domain: 'google.com',
+  srcPort: 52001,
+  dstPort: 443,
+  protocol: 'TCP',
+  flags: 'SYN',
+  info: 'TLS Handshake -> google.com'
+};
+const googleRes = freshEngine.evaluatePacket(googlePkt);
+assert(
+  googleRes.verdict === 'BLOCKED' && googleRes.matchedRule.id === 'rule-site-block',
+  'Domain google.com is BLOCKED by Rule (Block Google & Restricted Sites)',
+  `Got verdict=${googleRes.verdict}, rule=${googleRes.matchedRule?.name}`
+);
+
+// --- Test 19: Safe Domain Allowed (example.com via HTTP) ---
+const safeSitePkt = {
+  srcIp: '192.168.1.50',
+  dstIp: '93.184.216.34',
+  domain: 'example.com',
+  srcPort: 52002,
+  dstPort: 80,
+  protocol: 'TCP',
+  flags: 'ACK, PSH',
+  info: 'GET / HTTP/1.1'
+};
+const safeSiteRes = freshEngine.evaluatePacket(safeSitePkt);
+assert(
+  safeSiteRes.verdict === 'ALLOWED' && safeSiteRes.matchedRule.id === 'rule-3',
+  'Domain example.com is ALLOWED through HTTP Rule #3',
+  `Got verdict=${safeSiteRes.verdict}, rule=${safeSiteRes.matchedRule?.name}`
+);
+
+// --- Test 20: Multi-Client: Rogue Client C (192.168.1.99) to Internal DB is BLOCKED ---
+const rogueDbPkt = {
+  srcIp: '192.168.1.99',
+  dstIp: '10.0.0.20',
+  srcPort: 54321,
+  dstPort: 3306,
+  protocol: 'TCP',
+  flags: 'SYN',
+  info: 'Unauthorized SQL probe'
+};
+const rogueRes = freshEngine.evaluatePacket(rogueDbPkt);
+assert(
+  rogueRes.verdict === 'BLOCKED' && rogueRes.matchedRule.id === 'rule-rogue-client',
+  'Rogue Client C (192.168.1.99) is BLOCKED from accessing DB (10.0.0.20) by Rule (Block Rogue Client)',
+  `Got verdict=${rogueRes.verdict}, rule=${rogueRes.matchedRule?.name}`
+);
+
+// --- Test 21: Multi-Client / Multi-Server: Client B to Web Server is ALLOWED ---
+const devWebPkt = {
+  srcIp: '192.168.1.51',
+  dstIp: '10.0.0.10',
+  srcPort: 53100,
+  dstPort: 80,
+  protocol: 'TCP',
+  flags: 'ACK, PSH',
+  info: 'GET /api/v1/health'
+};
+const devWebRes = freshEngine.evaluatePacket(devWebPkt);
+assert(
+  devWebRes.verdict === 'ALLOWED' && devWebRes.matchedRule.id === 'rule-3',
+  'Client B (192.168.1.51) to Web Server (10.0.0.10:80) is ALLOWED by Rule #3',
+  `Got verdict=${devWebRes.verdict}, rule=${devWebRes.matchedRule?.name}`
+);
+
 console.log('\n====================================================');
 console.log(`   Test Results: ${passedTests}/${totalTests} Tests Passed (${Math.round((passedTests / totalTests) * 100)}%)   `);
 console.log('====================================================\n');
@@ -203,3 +274,4 @@ if (passedTests === totalTests) {
 } else {
   process.exit(1);
 }
+

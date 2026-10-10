@@ -1,6 +1,7 @@
 /**
  * PacketGuard Network Topology Simulator
  * Accurate, smooth, and deliberately paced packet transmission with dynamic SVG cable anchoring.
+ * Fully supports Multi-Client (A, B, C) and Multi-Server (Web, DB, Bastion) topology with live deflection.
  */
 
 class TopologySimulator {
@@ -12,20 +13,53 @@ class TopologySimulator {
     this.deflectReasonText = document.getElementById('deflectReasonText');
     this.engine = firewallEngine;
 
-    // DOM Nodes
-    this.nodeEls = {
-      client: document.getElementById('nodeClient'),
+    // Multi-Client DOM Nodes
+    this.clientNodes = {
+      '192.168.1.50': document.getElementById('nodeClientA'),
+      '192.168.1.51': document.getElementById('nodeClientB'),
+      '192.168.1.99': document.getElementById('nodeClientC')
+    };
+
+    // Multi-Server DOM Nodes
+    this.serverNodes = {
+      '10.0.0.10': document.getElementById('nodeServerWeb'),
+      '10.0.0.20': document.getElementById('nodeServerDb'),
+      '10.0.0.30': document.getElementById('nodeServerBastion')
+    };
+
+    // Core Infrastructure Nodes
+    this.infraNodes = {
       switch: document.getElementById('nodeSwitch'),
       firewall: document.getElementById('nodeFirewall'),
-      server: document.getElementById('nodeServer'),
       router: document.getElementById('nodeRouter'),
       internet: document.getElementById('nodeInternet')
     };
 
+    // Fallbacks for legacy single nodes if present
+    this.nodeEls = {
+      client: document.getElementById('nodeClientA') || document.getElementById('nodeClient'),
+      switch: this.infraNodes.switch,
+      firewall: this.infraNodes.firewall,
+      server: document.getElementById('nodeServerWeb') || document.getElementById('nodeServer'),
+      router: this.infraNodes.router,
+      internet: this.infraNodes.internet
+    };
+
     // SVG Cables
     this.cables = {
-      clientSwitch: document.getElementById('cableClientSwitch'),
-      switchServer: document.getElementById('cableSwitchServer'),
+      // Client to Switch
+      clientA_Switch: document.getElementById('cableClientA_Switch'),
+      clientB_Switch: document.getElementById('cableClientB_Switch'),
+      clientC_Switch: document.getElementById('cableClientC_Switch'),
+      legacyClientSwitch: document.getElementById('cableClientSwitch'),
+
+      // Switch to Server
+      switch_ServerWeb: document.getElementById('cableSwitch_ServerWeb'),
+      switch_ServerDb: document.getElementById('cableSwitch_ServerDb'),
+      switch_ServerBastion: document.getElementById('cableSwitch_ServerBastion'),
+      legacySwitchServer: document.getElementById('cableSwitchServer'),
+
+      // Core Backbones
       switchFirewall: document.getElementById('cableSwitchFirewall'),
       firewallRouter: document.getElementById('cableFirewallRouter'),
       routerInternet: document.getElementById('cableRouterInternet'),
@@ -34,7 +68,7 @@ class TopologySimulator {
 
     this.activePackets = new Set();
     this.isPaused = false;
-    this.speedMultiplier = 1.0; // 1.0 = normal, 0.6 = slow, 1.8 = fast
+    this.speedMultiplier = 1.0;
 
     this.callbacks = {
       onPacketLogged: null,
@@ -44,10 +78,13 @@ class TopologySimulator {
 
     this.deflectionTimer = null;
 
-    // Update cables on resize & orientation change (mobile)
+    // Dynamic cable recalculation
     window.addEventListener('resize', () => this.updateCableCoordinates());
     window.addEventListener('orientationchange', () => setTimeout(() => this.updateCableCoordinates(), 250));
-    // Initial cable alignment with retry for mobile font/layout settling
+    if (typeof ResizeObserver !== 'undefined' && this.stage) {
+      const ro = new ResizeObserver(() => this.updateCableCoordinates());
+      ro.observe(this.stage);
+    }
     setTimeout(() => this.updateCableCoordinates(), 100);
     setTimeout(() => this.updateCableCoordinates(), 500);
   }
@@ -68,9 +105,28 @@ class TopologySimulator {
     this.isPaused = false;
   }
 
-  /**
-   * Get exact center coordinates of any DOM node relative to the stage canvas
-   */
+  getClientNode(ip) {
+    return this.clientNodes[ip] || this.clientNodes['192.168.1.50'] || this.nodeEls.client;
+  }
+
+  getServerNode(ip) {
+    return this.serverNodes[ip] || this.serverNodes['10.0.0.10'] || this.nodeEls.server;
+  }
+
+  getClientCable(ip) {
+    if (ip === '192.168.1.50') return this.cables.clientA_Switch || this.cables.legacyClientSwitch;
+    if (ip === '192.168.1.51') return this.cables.clientB_Switch || this.cables.legacyClientSwitch;
+    if (ip === '192.168.1.99') return this.cables.clientC_Switch || this.cables.legacyClientSwitch;
+    return this.cables.clientA_Switch || this.cables.legacyClientSwitch;
+  }
+
+  getServerCable(ip) {
+    if (ip === '10.0.0.10') return this.cables.switch_ServerWeb || this.cables.legacySwitchServer;
+    if (ip === '10.0.0.20') return this.cables.switch_ServerDb || this.cables.legacySwitchServer;
+    if (ip === '10.0.0.30') return this.cables.switch_ServerBastion || this.cables.legacySwitchServer;
+    return this.cables.switch_ServerWeb || this.cables.legacySwitchServer;
+  }
+
   getNodePos(nodeEl) {
     if (!nodeEl) return { x: 0, y: 0 };
     const stageRect = this.stage.getBoundingClientRect();
@@ -81,44 +137,54 @@ class TopologySimulator {
     };
   }
 
-  /**
-   * Dynamically update SVG cable paths to connect with 100% precision to node centers
-   */
+  setPathLine(pathEl, p1, p2) {
+    if (pathEl && p1 && p2) {
+      pathEl.setAttribute('d', `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`);
+    }
+  }
+
   updateCableCoordinates() {
-    const c = this.getNodePos(this.nodeEls.client);
-    const sw = this.getNodePos(this.nodeEls.switch);
-    const fw = this.getNodePos(this.nodeEls.firewall);
-    const srv = this.getNodePos(this.nodeEls.server);
-    const rtr = this.getNodePos(this.nodeEls.router);
-    const net = this.getNodePos(this.nodeEls.internet);
+    if (!this.stage) return;
 
-    // Deflection anchor point (to the right of firewall)
-    const defX = fw.x + (srv.x - fw.x) * 0.45;
+    const sw = this.getNodePos(this.infraNodes.switch);
+    const fw = this.getNodePos(this.infraNodes.firewall);
+    const rtr = this.getNodePos(this.infraNodes.router);
+    const net = this.getNodePos(this.infraNodes.internet);
+
+    // Multi-Client Cables
+    const cA = this.getNodePos(this.clientNodes['192.168.1.50']);
+    const cB = this.getNodePos(this.clientNodes['192.168.1.51']);
+    const cC = this.getNodePos(this.clientNodes['192.168.1.99']);
+
+    this.setPathLine(this.cables.clientA_Switch, cA, sw);
+    this.setPathLine(this.cables.clientB_Switch, cB, sw);
+    this.setPathLine(this.cables.clientC_Switch, cC, sw);
+    this.setPathLine(this.cables.legacyClientSwitch, cA, sw);
+
+    // Multi-Server Cables
+    const sWeb = this.getNodePos(this.serverNodes['10.0.0.10']);
+    const sDb = this.getNodePos(this.serverNodes['10.0.0.20']);
+    const sBastion = this.getNodePos(this.serverNodes['10.0.0.30']);
+
+    this.setPathLine(this.cables.switch_ServerWeb, sw, sWeb);
+    this.setPathLine(this.cables.switch_ServerDb, sw, sDb);
+    this.setPathLine(this.cables.switch_ServerBastion, sw, sBastion);
+    this.setPathLine(this.cables.legacySwitchServer, sw, sWeb);
+
+    // Core Cables
+    this.setPathLine(this.cables.switchFirewall, sw, fw);
+    this.setPathLine(this.cables.firewallRouter, fw, rtr);
+    this.setPathLine(this.cables.routerInternet, rtr, net);
+
+    // Deflection Arc
+    const sTarget = sWeb.x ? sWeb : { x: fw.x + 180, y: fw.y };
+    const defX = fw.x + (sTarget.x - fw.x) * 0.45;
     const defY = fw.y - 25;
-
-    if (this.cables.clientSwitch) {
-      this.cables.clientSwitch.setAttribute('d', `M ${c.x} ${c.y} L ${sw.x} ${sw.y}`);
-    }
-    if (this.cables.switchServer) {
-      this.cables.switchServer.setAttribute('d', `M ${sw.x} ${sw.y} L ${srv.x} ${srv.y}`);
-    }
-    if (this.cables.switchFirewall) {
-      this.cables.switchFirewall.setAttribute('d', `M ${sw.x} ${sw.y} L ${fw.x} ${fw.y}`);
-    }
-    if (this.cables.firewallRouter) {
-      this.cables.firewallRouter.setAttribute('d', `M ${fw.x} ${fw.y} L ${rtr.x} ${rtr.y}`);
-    }
-    if (this.cables.routerInternet) {
-      this.cables.routerInternet.setAttribute('d', `M ${rtr.x} ${rtr.y} L ${net.x} ${net.y}`);
-    }
     if (this.cables.blockedArc) {
       this.cables.blockedArc.setAttribute('d', `M ${fw.x} ${fw.y} Q ${fw.x + 60} ${fw.y} ${defX} ${defY}`);
     }
   }
 
-  /**
-   * Dispatch a packet across the network topology with smooth, deliberate pacing
-   */
   sendPacket(packetInfo) {
     if (this.isPaused) return;
 
@@ -134,7 +200,21 @@ class TopologySimulator {
     const evalResult = this.engine.evaluatePacket(packet);
     packet.evalResult = evalResult;
 
-    const isInternetDest = packet.dstIp === '8.8.8.8' || packet.dstIp.startsWith('203.') || packet.protocol === 'DNS' || packet.dstPort === 53;
+    const isInternetDest = packet.dstIp === '8.8.8.8' ||
+      packet.dstIp.startsWith('203.') ||
+      packet.dstIp.includes('.') && !packet.dstIp.startsWith('10.') && !packet.dstIp.startsWith('192.') ||
+      packet.protocol === 'DNS' ||
+      packet.dstPort === 53 ||
+      !!packet.domain;
+
+    const srcClientEl = this.getClientNode(packet.srcIp);
+    const clientCable = this.getClientCable(packet.srcIp);
+
+    // Visual pulse on sending client
+    if (srcClientEl) {
+      srcClientEl.classList.add('node-active-pulse');
+      setTimeout(() => srcClientEl.classList.remove('node-active-pulse'), 1200 / this.speedMultiplier);
+    }
 
     // Create packet DOM pill
     const el = document.createElement('div');
@@ -151,20 +231,20 @@ class TopologySimulator {
     this.flightLayer.appendChild(el);
     this.activePackets.add(packet);
 
-    const cPos = this.getNodePos(this.nodeEls.client);
-    const swPos = this.getNodePos(this.nodeEls.switch);
-    const fwPos = this.getNodePos(this.nodeEls.firewall);
+    const cPos = this.getNodePos(srcClientEl);
+    const swPos = this.getNodePos(this.infraNodes.switch);
+    const fwPos = this.getNodePos(this.infraNodes.firewall);
 
     this.setElementPos(el, cPos.x, cPos.y);
 
-    // Leg 1: Client -> Switch (~950ms)
-    this.highlightCable(this.cables.clientSwitch);
-    this.animateAlongLine(el, cPos, swPos, 950 / this.speedMultiplier, () => {
-      this.unhighlightCable(this.cables.clientSwitch);
+    // Leg 1: Selected Client -> Switch (~900ms)
+    this.highlightCable(clientCable);
+    this.animateAlongLine(el, cPos, swPos, 900 / this.speedMultiplier, () => {
+      this.unhighlightCable(clientCable);
 
-      // Leg 2: Switch -> Firewall (~850ms)
+      // Leg 2: Switch -> Firewall (~800ms)
       this.highlightCable(this.cables.switchFirewall);
-      this.animateAlongLine(el, swPos, fwPos, 850 / this.speedMultiplier, () => {
+      this.animateAlongLine(el, swPos, fwPos, 800 / this.speedMultiplier, () => {
         this.unhighlightCable(this.cables.switchFirewall);
 
         // Arrived at Firewall: Inspection Phase
@@ -176,29 +256,25 @@ class TopologySimulator {
   handleFirewallInspection(el, packet, isInternetDest) {
     const { verdict, matchedRule } = packet.evalResult;
 
-    // Packet pauses at firewall with inspection indicator
     el.className = 'packet-pill inspecting';
     el.textContent = `Inspecting...`;
 
-    // Highlight matched rule in Rule Table
     if (this.callbacks.onRuleHit && matchedRule) {
       this.callbacks.onRuleHit(matchedRule.id);
     }
 
-    // Deliberate inspection pause (750ms)
     setTimeout(() => {
       if (verdict === 'BLOCKED') {
         this.handleBlockedPacket(el, packet);
       } else {
         this.handleAllowedPacket(el, packet, isInternetDest);
       }
-    }, 750 / this.speedMultiplier);
+    }, 700 / this.speedMultiplier);
   }
 
   handleBlockedPacket(el, packet) {
     const { matchedRule } = packet.evalResult;
 
-    // Visual firewall block reaction
     this.firewallBox.classList.remove('glow-allow');
     this.firewallBox.classList.add('glow-block');
     setTimeout(() => this.firewallBox.classList.remove('glow-block'), 700 / this.speedMultiplier);
@@ -208,7 +284,8 @@ class TopologySimulator {
 
     // Show Blocked Deflection Card
     const ruleText = matchedRule ? `Rule #${matchedRule.priority} (${matchedRule.name})` : 'Default Policy';
-    this.deflectReasonText.textContent = `${packet.protocol} Port ${packet.dstPort} - ${ruleText}`;
+    const targetLabel = packet.domain || `${packet.dstIp}:${packet.dstPort}`;
+    this.deflectReasonText.textContent = `${packet.protocol} to ${targetLabel} - ${ruleText}`;
     this.blockedCard.classList.remove('hidden');
 
     clearTimeout(this.deflectionTimer);
@@ -216,8 +293,8 @@ class TopologySimulator {
       this.blockedCard.classList.add('hidden');
     }, 4500 / this.speedMultiplier);
 
-    const fwPos = this.getNodePos(this.nodeEls.firewall);
-    const srvPos = this.getNodePos(this.nodeEls.server);
+    const fwPos = this.getNodePos(this.infraNodes.firewall);
+    const srvPos = this.getNodePos(this.getServerNode(packet.dstIp));
     const defTarget = {
       x: fwPos.x + (srvPos.x - fwPos.x) * 0.45,
       y: fwPos.y - 25
@@ -229,11 +306,9 @@ class TopologySimulator {
 
     this.highlightCable(this.cables.blockedArc);
 
-    // Deflect smoothly along curved path (~900ms)
     this.animateAlongCurve(el, fwPos, ctrlPoint, defTarget, 900 / this.speedMultiplier, () => {
       this.unhighlightCable(this.cables.blockedArc);
 
-      // Dissolve packet pill cleanly
       el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
       el.style.opacity = '0';
       el.style.transform = 'translate(-50%, -50%) scale(0.5)';
@@ -243,7 +318,6 @@ class TopologySimulator {
       }, 600);
     });
 
-    // Log to Timeline & Server Console
     if (this.callbacks.onPacketLogged) {
       this.callbacks.onPacketLogged(packet, 'BLOCKED');
     }
@@ -268,12 +342,12 @@ class TopologySimulator {
       this.callbacks.onPacketLogged(packet, 'ALLOWED');
     }
 
-    const fwPos = this.getNodePos(this.nodeEls.firewall);
+    const fwPos = this.getNodePos(this.infraNodes.firewall);
 
     if (isInternetDest) {
-      // Allowed Route: Firewall -> Router -> Internet Cloud
-      const rtrPos = this.getNodePos(this.nodeEls.router);
-      const netPos = this.getNodePos(this.nodeEls.internet);
+      // Route: Firewall -> Router -> Internet Cloud
+      const rtrPos = this.getNodePos(this.infraNodes.router);
+      const netPos = this.getNodePos(this.infraNodes.internet);
 
       this.highlightCable(this.cables.firewallRouter);
       this.animateAlongLine(el, fwPos, rtrPos, 700 / this.speedMultiplier, () => {
@@ -286,28 +360,34 @@ class TopologySimulator {
         });
       });
     } else {
-      // Allowed Route: Firewall -> Switch -> Server
-      const swPos = this.getNodePos(this.nodeEls.switch);
-      const srvPos = this.getNodePos(this.nodeEls.server);
+      // Route: Firewall -> Switch -> Selected Internal Server
+      const swPos = this.getNodePos(this.infraNodes.switch);
+      const targetServerEl = this.getServerNode(packet.dstIp);
+      const srvPos = this.getNodePos(targetServerEl);
+      const serverCable = this.getServerCable(packet.dstIp);
 
       this.highlightCable(this.cables.switchFirewall);
       this.animateAlongLine(el, fwPos, swPos, 750 / this.speedMultiplier, () => {
         this.unhighlightCable(this.cables.switchFirewall);
 
-        this.highlightCable(this.cables.switchServer);
-        this.animateAlongLine(el, swPos, srvPos, 900 / this.speedMultiplier, () => {
-          this.unhighlightCable(this.cables.switchServer);
-          this.handleServerArrival(el, packet);
+        this.highlightCable(serverCable);
+        this.animateAlongLine(el, swPos, srvPos, 850 / this.speedMultiplier, () => {
+          this.unhighlightCable(serverCable);
+          this.handleServerArrival(el, packet, targetServerEl);
         });
       });
     }
   }
 
-  handleServerArrival(reqEl, reqPacket) {
+  handleServerArrival(reqEl, reqPacket, serverEl) {
     if (reqEl.parentNode) reqEl.parentNode.removeChild(reqEl);
     this.activePackets.delete(reqPacket);
 
-    // Synthesize Server Response
+    if (serverEl) {
+      serverEl.classList.add('node-active-pulse');
+      setTimeout(() => serverEl.classList.remove('node-active-pulse'), 1200 / this.speedMultiplier);
+    }
+
     let respLabel = 'HTTP 200 OK';
     let respInfo = '200 OK (2.4 KB)';
     let respProto = reqPacket.protocol || 'HTTP';
@@ -319,6 +399,10 @@ class TopologySimulator {
     } else if (reqPacket.dstPort === 3306) {
       respLabel = 'MySQL Result';
       respInfo = 'Query Results (14 rows)';
+      respProto = 'TCP';
+    } else if (reqPacket.dstPort === 22) {
+      respLabel = 'SSH Auth Prompt';
+      respInfo = 'SSH-2.0-OpenSSH_9.0';
       respProto = 'TCP';
     } else if (reqPacket.method === 'POST') {
       respLabel = 'HTTP 201 Created';
@@ -347,27 +431,27 @@ class TopologySimulator {
       });
     }
 
-    // Realistic Server Processing Pause (500ms)
     setTimeout(() => {
       this.sendReturnPacket(respPacket, false);
-    }, 500 / this.speedMultiplier);
+    }, 450 / this.speedMultiplier);
   }
 
   handleInternetArrival(reqEl, reqPacket) {
     if (reqEl.parentNode) reqEl.parentNode.removeChild(reqEl);
     this.activePackets.delete(reqPacket);
 
+    const isLiveWeb = !!reqPacket.domain || reqPacket.dstPort === 80 || reqPacket.dstPort === 443;
     const respPacket = {
-      id: 'dns-resp-' + Math.random().toString(36).substr(2, 9),
+      id: 'resp-' + Math.random().toString(36).substr(2, 9),
       srcIp: reqPacket.dstIp,
       dstIp: reqPacket.srcIp,
       srcPort: reqPacket.dstPort,
       dstPort: reqPacket.srcPort,
-      protocol: 'DNS',
-      flags: 'RESPONSE',
-      info: 'Response (93.184.216.34)',
-      label: 'DNS Response',
-      size: 142,
+      protocol: reqPacket.protocol || 'TCP',
+      flags: isLiveWeb ? 'ACK, PSH' : 'RESPONSE',
+      info: isLiveWeb ? `HTTP 200 OK (${reqPacket.domain || 'Internet'})` : 'DNS Response (93.184.216.34)',
+      label: isLiveWeb ? 'HTTP 200 OK' : 'DNS Response',
+      size: isLiveWeb ? 1840 : 142,
       isResponse: true
     };
 
@@ -381,7 +465,7 @@ class TopologySimulator {
 
     setTimeout(() => {
       this.sendReturnPacket(respPacket, true);
-    }, 500 / this.speedMultiplier);
+    }, 450 / this.speedMultiplier);
   }
 
   sendReturnPacket(respPacket, isFromInternet) {
@@ -405,14 +489,16 @@ class TopologySimulator {
       this.callbacks.onPacketLogged(respPacket, 'ALLOWED');
     }
 
-    const swPos = this.getNodePos(this.nodeEls.switch);
-    const fwPos = this.getNodePos(this.nodeEls.firewall);
-    const cPos = this.getNodePos(this.nodeEls.client);
+    const swPos = this.getNodePos(this.infraNodes.switch);
+    const fwPos = this.getNodePos(this.infraNodes.firewall);
+    const destClientEl = this.getClientNode(respPacket.dstIp);
+    const cPos = this.getNodePos(destClientEl);
+    const clientCable = this.getClientCable(respPacket.dstIp);
 
     if (isFromInternet) {
       // Internet -> Router -> Firewall -> Switch -> Client
-      const netPos = this.getNodePos(this.nodeEls.internet);
-      const rtrPos = this.getNodePos(this.nodeEls.router);
+      const netPos = this.getNodePos(this.infraNodes.internet);
+      const rtrPos = this.getNodePos(this.infraNodes.router);
 
       this.setElementPos(el, netPos.x, netPos.y);
       this.highlightCable(this.cables.routerInternet);
@@ -420,16 +506,16 @@ class TopologySimulator {
         this.unhighlightCable(this.cables.routerInternet);
 
         this.highlightCable(this.cables.firewallRouter);
-        this.animateAlongLine(el, rtrPos, fwPos, 700 / this.speedMultiplier, () => {
+        this.animateAlongLine(el, rtrPos, fwPos, 650 / this.speedMultiplier, () => {
           this.unhighlightCable(this.cables.firewallRouter);
 
           this.highlightCable(this.cables.switchFirewall);
-          this.animateAlongLine(el, fwPos, swPos, 700 / this.speedMultiplier, () => {
+          this.animateAlongLine(el, fwPos, swPos, 650 / this.speedMultiplier, () => {
             this.unhighlightCable(this.cables.switchFirewall);
 
-            this.highlightCable(this.cables.clientSwitch);
-            this.animateAlongLine(el, swPos, cPos, 900 / this.speedMultiplier, () => {
-              this.unhighlightCable(this.cables.clientSwitch);
+            this.highlightCable(clientCable);
+            this.animateAlongLine(el, swPos, cPos, 850 / this.speedMultiplier, () => {
+              this.unhighlightCable(clientCable);
               this.removePacket(el, respPacket);
             });
           });
@@ -437,24 +523,26 @@ class TopologySimulator {
       });
     } else {
       // Server -> Switch -> Firewall -> Switch -> Client
-      const srvPos = this.getNodePos(this.nodeEls.server);
+      const srcServerEl = this.getServerNode(respPacket.srcIp);
+      const srvPos = this.getNodePos(srcServerEl);
+      const serverCable = this.getServerCable(respPacket.srcIp);
 
       this.setElementPos(el, srvPos.x, srvPos.y);
-      this.highlightCable(this.cables.switchServer);
-      this.animateAlongLine(el, srvPos, swPos, 900 / this.speedMultiplier, () => {
-        this.unhighlightCable(this.cables.switchServer);
+      this.highlightCable(serverCable);
+      this.animateAlongLine(el, srvPos, swPos, 750 / this.speedMultiplier, () => {
+        this.unhighlightCable(serverCable);
 
         this.highlightCable(this.cables.switchFirewall);
-        this.animateAlongLine(el, swPos, fwPos, 700 / this.speedMultiplier, () => {
+        this.animateAlongLine(el, swPos, fwPos, 650 / this.speedMultiplier, () => {
           this.unhighlightCable(this.cables.switchFirewall);
 
           this.highlightCable(this.cables.switchFirewall);
-          this.animateAlongLine(el, fwPos, swPos, 700 / this.speedMultiplier, () => {
+          this.animateAlongLine(el, fwPos, swPos, 650 / this.speedMultiplier, () => {
             this.unhighlightCable(this.cables.switchFirewall);
 
-            this.highlightCable(this.cables.clientSwitch);
-            this.animateAlongLine(el, swPos, cPos, 900 / this.speedMultiplier, () => {
-              this.unhighlightCable(this.cables.clientSwitch);
+            this.highlightCable(clientCable);
+            this.animateAlongLine(el, swPos, cPos, 850 / this.speedMultiplier, () => {
+              this.unhighlightCable(clientCable);
               this.removePacket(el, respPacket);
             });
           });
@@ -477,7 +565,6 @@ class TopologySimulator {
   }
 
   // --- Animation Primitives with Smooth Ease-in-Out Timing ---
-
   setElementPos(el, x, y) {
     el.style.left = `${x}px`;
     el.style.top = `${y}px`;
@@ -494,7 +581,6 @@ class TopologySimulator {
 
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // Smooth sinusoidal ease-in-out
       const ease = 0.5 - 0.5 * Math.cos(progress * Math.PI);
 
       const currentX = start.x + (end.x - start.x) * ease;
@@ -525,7 +611,6 @@ class TopologySimulator {
       const progress = Math.min(elapsed / duration, 1);
       const t = 0.5 - 0.5 * Math.cos(progress * Math.PI);
 
-      // Quadratic Bezier interpolation: B(t) = (1-t)^2*P0 + 2(1-t)t*P1 + t^2*P2
       const currentX = (1 - t) * (1 - t) * start.x + 2 * (1 - t) * t * control.x + t * t * end.x;
       const currentY = (1 - t) * (1 - t) * start.y + 2 * (1 - t) * t * control.y + t * t * end.y;
 
@@ -543,4 +628,6 @@ class TopologySimulator {
 }
 
 // Export for browser
-window.TopologySimulator = TopologySimulator;
+if (typeof window !== 'undefined') {
+  window.TopologySimulator = TopologySimulator;
+}

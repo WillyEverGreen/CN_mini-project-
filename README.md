@@ -1,7 +1,9 @@
-# 🛡️ PacketGuard
-### Stateful Network Firewall Simulator
-
 <div align="center">
+
+<img src="logo.svg" alt="PacketGuard Logo" width="76" height="76" />
+
+# PacketGuard
+### Stateful Network Firewall Simulator
 
 ![Tests](https://img.shields.io/badge/Tests-21%2F21%20Passed-10B981?style=flat-square&logo=checkmarx)
 ![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Vercel-2563EB?style=flat-square&logo=vercel)

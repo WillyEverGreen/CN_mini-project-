@@ -155,9 +155,9 @@
         <div class="form-group" id="clientGroup">
           <label for="reqClient">Source Client Node</label>
           <select id="reqClient" class="form-select">
-            <option value="192.168.1.50" data-name="Client A (Admin)" selected>💻 Client A - Admin (192.168.1.50)</option>
-            <option value="192.168.1.51" data-name="Client B (Dev)">💻 Client B - Developer (192.168.1.51)</option>
-            <option value="192.168.1.99" data-name="Client C (Rogue)">⚠️ Client C - Rogue Host (192.168.1.99)</option>
+            <option value="192.168.1.50" data-name="Client A (Admin)" selected>Client A - Admin (192.168.1.50)</option>
+            <option value="192.168.1.51" data-name="Client B (Dev)">Client B - Developer (192.168.1.51)</option>
+            <option value="192.168.1.99" data-name="Client C (Rogue)">Client C - Rogue Host (192.168.1.99)</option>
           </select>
         </div>
 
@@ -165,13 +165,13 @@
         <div class="form-group" id="destSelectGroup">
           <label for="reqDestSelect">Destination Target</label>
           <select id="reqDestSelect" class="form-select">
-            <option value="10.0.0.10" data-port="80" data-proto="TCP" selected>🖥️ Web Server (10.0.0.10:80)</option>
-            <option value="10.0.0.20" data-port="3306" data-proto="TCP">🗄️ Database Server (10.0.0.20:3306)</option>
-            <option value="10.0.0.30" data-port="22" data-proto="TCP">🔒 SSH Bastion (10.0.0.30:22)</option>
-            <option value="google.com" data-port="443" data-proto="TCP">🚫 google.com (Blocked Site Demo)</option>
-            <option value="example.com" data-port="80" data-proto="TCP">🌐 example.com (Allowed Live Site)</option>
-            <option value="8.8.8.8" data-port="53" data-proto="UDP">☁️ Internet Cloud DNS (8.8.8.8:53)</option>
-            <option value="custom">✏️ Custom Host / IP...</option>
+            <option value="10.0.0.10" data-port="80" data-proto="TCP" selected>Web Server (10.0.0.10:80)</option>
+            <option value="10.0.0.20" data-port="3306" data-proto="TCP">Database Server (10.0.0.20:3306)</option>
+            <option value="10.0.0.30" data-port="22" data-proto="TCP">SSH Bastion (10.0.0.30:22)</option>
+            <option value="google.com" data-port="443" data-proto="TCP">google.com (Blocked Site Demo)</option>
+            <option value="example.com" data-port="80" data-proto="TCP">example.com (Allowed Live Site)</option>
+            <option value="8.8.8.8" data-port="53" data-proto="UDP">Internet Cloud DNS (8.8.8.8:53)</option>
+            <option value="custom">Custom Host / IP...</option>
           </select>
         </div>
 
@@ -715,7 +715,7 @@
           <span class="dot-green"></span>
         </div>
         <div class="browser-tab active-tab">
-          <span class="tab-favicon" id="browserFavicon">🌐</span>
+          <span class="tab-favicon" id="browserFavicon">HTTP</span>
           <span class="tab-title" id="browserTabTitle">Client Browser - google.com</span>
           <span class="tab-close">×</span>
         </div>
@@ -729,7 +729,7 @@
           <button class="b-nav-btn" id="browserRefreshBtn">&#8635;</button>
         </div>
         <div class="browser-url-input-box" id="browserUrlBox">
-          <span class="security-badge" id="browserSecBadge">🔒 Secure</span>
+          <span class="security-badge" id="browserSecBadge">Secure</span>
           <input type="text" id="browserUrlDisplay" value="https://google.com" readonly>
           <span class="latency-pill" id="browserLatencyPill">12ms</span>
         </div>

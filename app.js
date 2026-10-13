@@ -483,14 +483,14 @@ document.addEventListener('DOMContentLoaded', () => {
     browserLatencyPill.textContent = `${result.latencyMs || 25}ms`;
 
     if (result.verdict === 'BLOCKED') {
-      browserFavicon.textContent = '🚫';
-      browserSecBadge.textContent = '🛡️ Blocked by Firewall';
+      browserFavicon.textContent = 'DEFLECT';
+      browserSecBadge.textContent = 'Blocked by Firewall';
       browserSecBadge.className = 'security-badge blocked';
       browserStatusChip.textContent = `${result.statusCode} FORBIDDEN`;
       browserStatusChip.className = 'browser-status-chip blocked';
     } else {
-      browserFavicon.textContent = '🌐';
-      browserSecBadge.textContent = '🔒 Verified Allowed';
+      browserFavicon.textContent = 'HTTP';
+      browserSecBadge.textContent = 'Verified Allowed';
       browserSecBadge.className = 'security-badge';
       browserStatusChip.textContent = `${result.statusCode} OK`;
       browserStatusChip.className = 'browser-status-chip';
@@ -640,7 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
         domainDisplay = `${parts[0]} (+${parts.length - 1})`;
       }
       const domainBadge = rule.domain && rule.domain !== '*' && rule.domain !== 'ANY' ?
-        `<span class="rule-spec-tag domain" title="${escapeHtml(domainTitle)}">🌐 ${escapeHtml(domainDisplay)}</span>` : '';
+        `<span class="rule-spec-tag domain" title="${escapeHtml(domainTitle)}">${escapeHtml(domainDisplay)}</span>` : '';
 
       const srcBadge = rule.srcIp !== '*' ? `<span class="rule-spec-tag ip">src: ${rule.srcIp}</span>` : '';
       const dstBadge = rule.dstIp !== '*' ? `<span class="rule-spec-tag ip">dst: ${rule.dstIp}</span>` : '';

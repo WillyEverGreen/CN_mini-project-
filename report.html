@@ -91,12 +91,14 @@
     /* Report Layout */
     .report-container {
       max-width: 1060px;
-      margin: 36px auto;
+      margin: 24px auto;
       background: var(--bg-paper);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 64px 72px;
+      padding: clamp(20px, 4vw, 56px);
       box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      width: calc(100% - 32px);
+      box-sizing: border-box;
     }
 
     /* Academic Title Header */

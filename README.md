@@ -1,30 +1,18 @@
-# 🛡️ PacketGuard: Enterprise Network Firewall Simulator & Packet Filtering Engine
+# 🛡️ PacketGuard
+### Stateful Network Firewall Simulator
 
 <div align="center">
 
-![Tests](https://img.shields.io/badge/Tests-21%2F21%20Passed%20(100%25)-10B981?style=for-the-badge&logo=checkmarx)
-![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Vercel%20%7C%20Local-2563EB?style=for-the-badge&logo=vercel)
-![Protocols](https://img.shields.io/badge/OSI%20Layers-L3%20%2F%20L4%20%2F%20L7-8B5CF6?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-059669?style=for-the-badge)
+![Tests](https://img.shields.io/badge/Tests-21%2F21%20Passed-10B981?style=flat-square&logo=checkmarx)
+![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Vercel-2563EB?style=flat-square&logo=vercel)
+![OSI](https://img.shields.io/badge/OSI-L3%20%7C%20L4%20%7C%20L7-8B5CF6?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-059669?style=flat-square)
 
-<br/>
+**Interactive simulation of a Layer 3/4 Stateful Packet-Filtering Firewall with Layer 7 Domain Deflection for Computer Networks (CN).**
 
-**A production-grade, interactive simulation of a Layer 3 / Layer 4 Stateful Packet-Filtering Firewall with Layer 7 Domain Deflection built for the Computer Networks (CN) Mini Project.**
+[Quick Start](#-quick-start) • [Topology](#️-network-architecture--topology) • [Demo Guide](#-interactive-demo-guide) • [Test Suite](#-test-suite--validation) • [Vercel Deploy](#️-deployment-to-vercel)
 
-<br/>
-
-<a href="#-quick-start">Quick Start</a> •
-<a href="#-live-simulation--screenshots">Preview</a> •
-<a href="#-core-networking-concepts">Networking Concepts</a> •
-<a href="#-interactive-demo-guide">Demo Guide</a> •
-<a href="#-test-suite--validation">Test Suite</a> •
-<a href="#-deployment-to-vercel">Vercel Deploy</a>
-
-<br/><br/>
-
-<img src="screenshot.png" alt="PacketGuard Multi-Client Network Firewall Simulator Dashboard" width="100%" style="border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);"/>
-
-<p align="center"><em>Figure 1: PacketGuard Dashboard featuring multi-client request crafting, SVG topology packet flight, sequential firewall rule evaluation, live timeline logging, and gateway terminal.</em></p>
+<img src="screenshot.png" alt="PacketGuard Simulator Dashboard" width="100%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); margin-top: 10px;"/>
 
 </div>
 

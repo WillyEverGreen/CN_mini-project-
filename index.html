@@ -581,7 +581,7 @@
             <div class="step-badge">4</div>
             <div class="panel-title-group">
               <h2>Firewall Security Rules</h2>
-              <p>Rules evaluated in strict first-match priority order</p>
+              <p>First-match order &bull; Drag or use &#9650;/&#9660; to move rules</p>
             </div>
           </div>
           <button class="btn-primary add-rule-btn" id="addRuleBtn">
@@ -686,6 +686,15 @@
             <label for="ruleDstPort">Destination Port (* = any)</label>
             <input type="text" id="ruleDstPort" value="*" placeholder="* or 80, 443">
           </div>
+        </div>
+
+        <div class="form-group">
+          <label for="rulePosition">Initial Priority Placement</label>
+          <select id="rulePosition">
+            <option value="before-default" selected>Before Default Deny (Recommended)</option>
+            <option value="top">Top (#1 - Evaluated First)</option>
+            <option value="bottom">Bottom (Last Priority)</option>
+          </select>
         </div>
 
         <div class="modal-footer">

@@ -618,13 +618,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Rule List Rendering & Priority Management ---
-  function renderRulesList() {
+  let draggedRuleIndex = null;
+
+  function renderRulesList(highlightRuleId = null) {
     rulesListContainer.innerHTML = '';
 
     engine.rules.forEach((rule, index) => {
       const item = document.createElement('div');
-      item.className = `rule-item ${rule.enabled ? '' : 'rule-disabled'}`;
+      item.className = `rule-item ${rule.enabled ? '' : 'rule-disabled disabled'}`;
       item.dataset.ruleId = rule.id;
+      item.dataset.ruleIndex = index;
+      item.setAttribute('draggable', 'true');
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('role', 'listitem');
+
+      if (rule.id === highlightRuleId) {
+        item.classList.add('rule-just-moved');
+        setTimeout(() => item.classList.remove('rule-just-moved'), 1200);
+      }
 
       const actionBadge = rule.action === 'ALLOW' ?
         '<span class="rule-action allow">ALLOW</span>' :
@@ -646,8 +657,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const dstBadge = rule.dstIp !== '*' ? `<span class="rule-spec-tag ip">dst: ${rule.dstIp}</span>` : '';
 
       item.innerHTML = `
-        <div class="rule-drag-handle" title="Drag to reorder priority">&#8942;&#8942;</div>
-        <div class="rule-priority">#${rule.priority}</div>
+        <div class="rule-drag-handle" title="Drag to reorder priority (or use ▲/▼ buttons)" draggable="false">&#8942;&#8942;</div>
+        <div class="rule-priority" title="Priority #${rule.priority} (Click to set custom priority position)">#${rule.priority}</div>
         <div class="rule-details">
           <div class="rule-top-line">
             <span class="rule-name" title="${escapeHtml(rule.name)}">${escapeHtml(rule.name)}</span>
@@ -663,23 +674,192 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
         <div class="rule-actions">
-          <button class="rule-action-btn toggle-rule" title="${rule.enabled ? 'Disable' : 'Enable'} rule">
+          <button type="button" class="rule-action-btn move-up-rule" title="Move Up (Higher Priority)" ${index === 0 ? 'disabled' : ''}>
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+          </button>
+          <button type="button" class="rule-action-btn move-down-rule" title="Move Down (Lower Priority)" ${index === engine.rules.length - 1 ? 'disabled' : ''}>
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <button type="button" class="rule-action-btn toggle-rule" title="${rule.enabled ? 'Disable' : 'Enable'} rule">
             ${rule.enabled ? '✓' : '⊘'}
           </button>
-          <button class="rule-action-btn delete-rule" title="Delete rule">&times;</button>
+          <button type="button" class="rule-action-btn delete-rule" title="Delete rule">&times;</button>
         </div>
       `;
 
+      // Move Up button
+      const moveUpBtn = item.querySelector('.move-up-rule');
+      if (moveUpBtn) {
+        moveUpBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (index > 0) {
+            const movedRule = rule;
+            engine.reorderRules(index, index - 1);
+            renderRulesList(movedRule.id);
+            logToServerConsole(`[POLICY REORDER] Rule "${movedRule.name}" moved up to Priority #${index}`, 'info');
+          }
+        });
+      }
+
+      // Move Down button
+      const moveDownBtn = item.querySelector('.move-down-rule');
+      if (moveDownBtn) {
+        moveDownBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (index < engine.rules.length - 1) {
+            const movedRule = rule;
+            engine.reorderRules(index, index + 1);
+            renderRulesList(movedRule.id);
+            logToServerConsole(`[POLICY REORDER] Rule "${movedRule.name}" moved down to Priority #${index + 2}`, 'info');
+          }
+        });
+      }
+
+      // Click on Priority Badge to jump to specific priority
+      const priorityBadge = item.querySelector('.rule-priority');
+      if (priorityBadge) {
+        priorityBadge.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const currentPos = index + 1;
+          const input = prompt(
+            `Move Rule #${currentPos} ("${rule.name}") to new priority position (1 to ${engine.rules.length}):`,
+            String(currentPos)
+          );
+          if (input !== null) {
+            const targetPos = parseInt(input.trim(), 10);
+            if (!isNaN(targetPos) && targetPos >= 1 && targetPos <= engine.rules.length) {
+              if (targetPos !== currentPos) {
+                engine.reorderRules(index, targetPos - 1);
+                renderRulesList(rule.id);
+                logToServerConsole(`[POLICY REORDER] Rule "${rule.name}" moved from #${currentPos} to Priority #${targetPos}`, 'info');
+              }
+            } else {
+              alert(`Invalid position. Please enter a valid number between 1 and ${engine.rules.length}.`);
+            }
+          }
+        });
+      }
+
+      // Toggle rule active/disabled
       item.querySelector('.toggle-rule').addEventListener('click', (e) => {
         e.stopPropagation();
         engine.toggleRule(rule.id);
         renderRulesList();
+        logToServerConsole(`[RULE UPDATE] Rule #${rule.priority} ("${rule.name}") ${rule.enabled ? 'Enabled' : 'Disabled'}`, 'info');
       });
 
+      // Delete rule
       item.querySelector('.delete-rule').addEventListener('click', (e) => {
         e.stopPropagation();
+        const deletedName = rule.name;
         engine.deleteRule(rule.id);
         renderRulesList();
+        logToServerConsole(`[RULE DELETE] Rule "${deletedName}" removed from policy table`, 'warning');
+      });
+
+      // --- Drag and Drop Handlers ---
+      item.addEventListener('dragstart', (e) => {
+        // Prevent drag if initiating from an action button or prompt
+        if (e.target.closest('.rule-actions') || e.target.closest('button')) {
+          e.preventDefault();
+          return;
+        }
+        draggedRuleIndex = index;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(index));
+        setTimeout(() => {
+          item.classList.add('dragging');
+        }, 0);
+      });
+
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        document.querySelectorAll('.rule-item').forEach(el => {
+          el.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+        });
+        draggedRuleIndex = null;
+      });
+
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        if (draggedRuleIndex === null || draggedRuleIndex === index) {
+          return;
+        }
+
+        const rect = item.getBoundingClientRect();
+        const relY = e.clientY - rect.top;
+        const isTopHalf = relY < rect.height / 2;
+
+        item.classList.remove('drag-over-top', 'drag-over-bottom');
+        if (isTopHalf) {
+          item.classList.add('drag-over-top');
+        } else {
+          item.classList.add('drag-over-bottom');
+        }
+      });
+
+      item.addEventListener('dragleave', (e) => {
+        if (!item.contains(e.relatedTarget)) {
+          item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+        }
+      });
+
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+
+        if (draggedRuleIndex === null || draggedRuleIndex === index) {
+          return;
+        }
+
+        const rect = item.getBoundingClientRect();
+        const relY = e.clientY - rect.top;
+        const isTopHalf = relY < rect.height / 2;
+
+        let insertAt = isTopHalf ? index : index + 1;
+        if (draggedRuleIndex < insertAt) {
+          insertAt--;
+        }
+
+        if (draggedRuleIndex !== insertAt) {
+          const movedRule = engine.rules[draggedRuleIndex];
+          const oldPriority = draggedRuleIndex + 1;
+          const newPriority = insertAt + 1;
+          engine.reorderRules(draggedRuleIndex, insertAt);
+          renderRulesList(movedRule.id);
+          logToServerConsole(`[POLICY REORDER] Moved rule "${movedRule.name}" from #${oldPriority} to #${newPriority}`, 'info');
+        }
+      });
+
+      // Keyboard Reordering (Alt + ArrowUp / Alt + ArrowDown)
+      item.addEventListener('keydown', (e) => {
+        if (e.altKey && e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (index > 0) {
+            engine.reorderRules(index, index - 1);
+            renderRulesList(rule.id);
+            logToServerConsole(`[POLICY REORDER] Rule "${rule.name}" moved up to Priority #${index}`, 'info');
+            const targetEl = rulesListContainer.querySelector(`[data-rule-id="${rule.id}"]`);
+            if (targetEl) targetEl.focus();
+          }
+        } else if (e.altKey && e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (index < engine.rules.length - 1) {
+            engine.reorderRules(index, index + 1);
+            renderRulesList(rule.id);
+            logToServerConsole(`[POLICY REORDER] Rule "${rule.name}" moved down to Priority #${index + 2}`, 'info');
+            const targetEl = rulesListContainer.querySelector(`[data-rule-id="${rule.id}"]`);
+            if (targetEl) targetEl.focus();
+          }
+        }
       });
 
       rulesListContainer.appendChild(item);
@@ -713,8 +893,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const dstIp = document.getElementById('ruleDstIp').value.trim() || '*';
     const srcPort = document.getElementById('ruleSrcPort').value.trim() || '*';
     const dstPort = document.getElementById('ruleDstPort').value.trim() || '*';
+    const positionEl = document.getElementById('rulePosition');
+    const position = positionEl ? positionEl.value : 'before-default';
 
-    engine.addRule({
+    const newRule = engine.addRule({
       name,
       action,
       protocol,
@@ -723,11 +905,13 @@ document.addEventListener('DOMContentLoaded', () => {
       dstIp,
       srcPort,
       dstPort,
-      state: 'ANY'
+      state: 'ANY',
+      position
     });
 
     ruleModal.classList.add('hidden');
-    renderRulesList();
+    renderRulesList(newRule.id);
+    logToServerConsole(`[SECURITY POLICY] Added new rule "${newRule.name}" at Priority #${newRule.priority} (${newRule.action})`, 'success');
     document.getElementById('ruleForm').reset();
   });
 

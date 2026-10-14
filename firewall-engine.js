@@ -417,10 +417,9 @@ class FirewallEngine {
 
   // --- Rule Management Methods ---
   addRule(ruleData) {
-    const newPriority = this.rules.length + 1;
     const newRule = {
-      id: 'rule-' + Date.now(),
-      priority: newPriority,
+      id: ruleData.id || ('rule-' + Date.now() + '-' + Math.floor(Math.random() * 10000)),
+      priority: this.rules.length + 1,
       name: ruleData.name || 'Custom Rule',
       action: ruleData.action || 'DENY',
       protocol: ruleData.protocol || 'ANY',
@@ -432,7 +431,22 @@ class FirewallEngine {
       state: ruleData.state || 'ANY',
       enabled: true
     };
-    this.rules.push(newRule);
+
+    if (ruleData.position === 'top') {
+      this.rules.unshift(newRule);
+    } else if (ruleData.position === 'before-default') {
+      const defaultIdx = this.rules.findIndex(r => r.id === 'rule-7' || r.name.toLowerCase().includes('default deny') || r.name.toLowerCase().includes('deny all'));
+      if (defaultIdx !== -1) {
+        this.rules.splice(defaultIdx, 0, newRule);
+      } else {
+        this.rules.push(newRule);
+      }
+    } else if (typeof ruleData.position === 'number' && ruleData.position >= 0 && ruleData.position <= this.rules.length) {
+      this.rules.splice(ruleData.position, 0, newRule);
+    } else {
+      this.rules.push(newRule);
+    }
+
     this.reindexPriorities();
     return newRule;
   }
@@ -449,6 +463,7 @@ class FirewallEngine {
 
   reorderRules(fromIndex, toIndex) {
     if (fromIndex < 0 || fromIndex >= this.rules.length || toIndex < 0 || toIndex >= this.rules.length) return;
+    if (fromIndex === toIndex) return;
     const [moved] = this.rules.splice(fromIndex, 1);
     this.rules.splice(toIndex, 0, moved);
     this.reindexPriorities();

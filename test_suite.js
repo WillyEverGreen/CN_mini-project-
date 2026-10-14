@@ -265,6 +265,54 @@ assert(
   `Got verdict=${devWebRes.verdict}, rule=${devWebRes.matchedRule?.name}`
 );
 
+// --- Test 22: Dynamic Rule Reordering (Moving a Deny rule above an Allow rule) ---
+const reorderEngine = new window.FirewallEngine();
+// By default, Rule #3 allows HTTP (priority 6) and Rule #7 denies all (priority 10)
+// Let's create a custom deny HTTP rule placed at the end, then move it to priority 1
+const blockHttpRule = reorderEngine.addRule({
+  name: 'Temporary Maintenance: Block HTTP',
+  action: 'DENY',
+  protocol: 'TCP',
+  srcIp: '*',
+  dstIp: '*',
+  srcPort: '*',
+  dstPort: '80',
+  position: 'bottom'
+});
+// Before reordering, HTTP is ALLOWED by Rule #3
+assert(
+  reorderEngine.evaluatePacket(httpPkt).verdict === 'ALLOWED',
+  'Before reordering, HTTP is ALLOWED by earlier Rule #3'
+);
+// Reorder: move blockHttpRule to index 0 (Priority #1)
+reorderEngine.reorderRules(reorderEngine.rules.length - 1, 0);
+assert(
+  reorderEngine.rules[0].id === blockHttpRule.id && reorderEngine.rules[0].priority === 1,
+  'Reordered rule is now at index 0 with priority 1'
+);
+assert(
+  reorderEngine.evaluatePacket(httpPkt).verdict === 'BLOCKED',
+  'After reordering to Priority #1, HTTP is BLOCKED by First-Match semantics'
+);
+
+// --- Test 23: Initial Priority Placement Options (top / before-default) ---
+const posEngine = new window.FirewallEngine();
+const topRule = posEngine.addRule({
+  name: 'Top Priority Rule',
+  action: 'DENY',
+  position: 'top'
+});
+assert(posEngine.rules[0].id === topRule.id && topRule.priority === 1, 'Rule added with position: "top" is at priority #1');
+
+const beforeDefRule = posEngine.addRule({
+  name: 'Before Default Rule',
+  action: 'ALLOW',
+  position: 'before-default'
+});
+const defIndex = posEngine.rules.findIndex(r => r.id === 'rule-7' || r.name.toLowerCase().includes('default deny'));
+const beforeDefIndex = posEngine.rules.findIndex(r => r.id === beforeDefRule.id);
+assert(beforeDefIndex === defIndex - 1, 'Rule added with position: "before-default" is placed immediately before Default Deny');
+
 console.log('\n====================================================');
 console.log(`   Test Results: ${passedTests}/${totalTests} Tests Passed (${Math.round((passedTests / totalTests) * 100)}%)   `);
 console.log('====================================================\n');

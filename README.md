@@ -207,4 +207,4 @@ The repository is configured for 1-click deployment on Vercel with included [`ve
 
 ## 📄 License
 
-This project is licensed under the **MIT License** — free for academic and educational usage.
+This project is licensed under the **MIT License** - free for academic and educational usage.
